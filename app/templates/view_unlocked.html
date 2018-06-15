@@ -1,0 +1,200 @@
+
+<div class="fluid-container content" style="padding-bottom: 15px;">
+
+  <div class="row viewheader">
+    <div class="col" style="max-width:300px;padding-top: 5px;">
+      <button type="button"
+        onclick="lock(this)"
+        class="btn btn-outline-success">
+        <i class="fas fa-lock-open"></i>
+      </button>
+      <button type="button"
+        onclick="save_state()"
+        class="btn btn-outline-success"><i class="fas fa-save"></i> Сохранить</button>
+      <a href="{{ url_for('main.new') }}"
+        role="button"
+        target="_blank"
+        class="btn btn-outline-success"><i class="fas fa-file"></i> Создать задачу</a>
+    </div>
+    <div class="col" style="padding-top: 5px;">
+      <div><input class="form-control" type="text" id="view_name"
+        style="height:32px;font-size:110%;font-weight:bold;"
+        value="{{ view.view_name if view else view_key  }}"></div>
+    </div>
+    <div class="col" style="max-width:205px;display:flex;padding-top: 5px;">
+      <div class="input-group" style="height: 32px;">
+        <div class="input-group-prepend">
+          <label class="custom-control custom-checkbox">
+            <input type="checkbox" id="crontab_enabled"
+              {{ 'checked' if view and view.crontab_enabled else '' }}
+              class="custom-control-input">
+            <span class="custom-control-indicator"></span>
+          </label>
+        </div>
+        <input class="form-control" type="text" placeholder="Crontab" id="crontab"
+          value="{{ view.crontab if view else '' }}"
+          style="height:32px;font-family: monospace;font-size: 110%;max-width: 130px;">
+        <div class="input-group-append">
+          <a role="button" target="_blank"
+            href="https://crontab.guru/" style="height:32px"
+            class="btn btn-secondary"><i class="fas fa-question-circle"></i></a>
+        </div>
+      </div>
+    </div>
+    {% if view %}
+    <div style="position: absolute;right: 15px;bottom: -20px;">
+      saved: {{ view.view_saved }}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="editors" style="background-color: #f7f7f7;display:flex">
+    <div class="left-block" style="display:flex;flex-direction: column;overflow: hidden">
+      <div class="options">
+        <div class="form-check" style="padding-right: 15px;">
+          <label class="form-check-label">
+            <input type="radio"
+              class="form-check-input"
+              name="selecter_mode"
+              mode="simple"
+              {{ 'checked' if view and view.settings['selecter']['mode'] == 'simple' else '' }}>Simple
+          </label>
+        </div>
+        <div class="form-check" style="padding-right: 15px;">
+          <label class="form-check-label">
+            <input type="radio"
+              class="form-check-input"
+              name="selecter_mode"
+              mode="python"
+              {{ 'checked' if view and view.settings['selecter']['mode'] == 'python' else '' }}>JSON
+          </label>
+        </div>
+        <div class="form-check" style="padding-right: 15px;">
+          <label class="form-check-label">
+            <input type="radio"
+              class="form-check-input"
+              name="selecter_mode"
+              mode="sql"
+              {{ 'checked' if (view and view.settings['selecter']['mode'] == 'sql') or not view else '' }}>SQL
+          </label>
+        </div>
+      </div>
+      <div class="" style="flex:1;overflow-y: auto;" id="devicer_select"></div>
+      <div class="options">
+        <button type="button"
+          style="min-width:147px"
+          onclick="select_data(this)"
+          class="btn btn-outline-success"><i class="fas fa-table"></i> Загрузить данные</button>
+      </div>
+    </div>
+    <div class="handle_vertical"></div>
+    <div class="right-block" style="display:flex;flex-direction: column;overflow:hidden;">
+      <div class="options"></div>
+      <div class="" style="flex:1;overflow-y: auto;" id="devicer_code"></div>
+      <div class="options">
+        <button type="button"
+          style="margin-right: 5px;min-width:100px;"
+          onclick="exec_select(this)"
+          class="btn btn-outline-success"><i class="far fa-play-circle"></i> Запустить</button>
+        <button type="button"
+          style="margin-right: 5px;min-width:175px;"
+          onclick="exec_errors(this)"
+          class="btn btn-outline-danger"><i class="far fa-play-circle"></i> Запустить по ошибкам</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="handle_horizontal"></div>
+
+  <div class="row" style="padding: 15px 0px 0px 0px;">
+    <div id="data_table" class="col"></div>
+  </div>
+
+</div>
+
+<script type="text/javascript">
+
+  var processing = false;
+
+  var devicer_select = CodeMirror(document.getElementById("devicer_select"), {
+    lineNumbers: true,
+    indentUnit: 2,
+    matchBrackets: true,
+    value: `{{ (view.settings['selecter']['code'].replace('\\', '\\\\') if view else '') | safe }}`
+  });
+
+  var devicer_code = CodeMirror(document.getElementById("devicer_code"), {
+    mode: {name: "python", version: 3, singleLineStringErrors: false},
+    lineNumbers: true,
+    indentUnit: 2,
+    matchBrackets: true,
+    value: `{{ (view.settings['devicer']['code'].replace('\\', '\\\\') if view else '') | safe }}`
+  });
+
+  load_data({{ (view.data if view else {}) | tojson | safe }});
+  set_columns_settings({{ (view.settings['columns'] if view else {}) | tojson | safe }});
+
+  $('input[name="selecter_mode"]').on('click', function(e) {
+    devicer_select.setOption("mode", $(this).attr('mode'));
+  });
+  $('input[name="selecter_mode"]:checked').click();
+
+
+  let handle_horizontal = $(".handle_horizontal");
+  let handle_vertical = $(".handle_vertical");
+  let editors = $(".editors");
+  let left_block = $(editors).find('.left-block');
+  let right_block = $(editors).find('.right-block');
+
+  $(editors).height($.cookie('editors_height') == null ? 300 : $.cookie('editors_height'));
+  $(left_block).width($.cookie('left_block_width') == null ? "100%" : $.cookie('left_block_width'));
+  $(right_block).width($(editors).width() - 20 - $(left_block).width());
+
+  const MIN_HEIGHT = 400;
+
+  var start_x;
+  var start_y;
+  var start_h;
+  var start_w;
+
+  function on_drag_horizontal(e) {
+    $(editors).height(start_h + e.pageY - start_y);
+  }
+
+  function on_drag_vertical(e) {
+    $(left_block).width(start_w[1] + e.pageX - start_x);
+    $(right_block).width(start_w[0] - start_w[1] - 20 - e.pageX + start_x);
+  }
+
+  function on_release(e) {
+    $.cookie('editors_height', $(editors).height());
+    $.cookie('left_block_width', $(left_block).width());
+    $.cookie('right_block_width', $(right_block).width());
+    $(document.body).unbind("mousemove");
+    $(window).unbind("mouseup", on_release);
+  }
+
+  $(handle_horizontal).mousedown(function(e) {
+    start_x = e.pageX;
+    start_y = e.pageY;
+    start_h = $(editors).height();
+  	$(document.body).mousemove(on_drag_horizontal);
+    $(window).mouseup(on_release);
+  });
+
+  $(handle_vertical).mousedown(function(e) {
+    start_x = e.pageX;
+    start_y = e.pageY;
+    start_w = [$(editors).width(),
+               $(left_block).width(),
+               $(right_block).width()];
+  	$(document.body).mousemove(on_drag_vertical);
+    $(window).mouseup(on_release);
+  });
+
+  $(window).on('resize', function() {
+    $(left_block).width($(editors).width() - 20 - $(right_block).width());
+    $(right_block).width($(editors).width() - 20 - $(left_block).width());
+  });
+
+</script>

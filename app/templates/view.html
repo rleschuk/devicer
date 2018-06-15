@@ -1,0 +1,29 @@
+{% extends "layout.html" %}
+
+{% block title %}
+  {% if view and view.view_name %}
+    {{ view.view_name }} {{ view.view_saved }}
+  {% else %}
+    {{ view_key }} {{ now.strftime("%d/%m/%Y %H:%M") }}
+  {% endif %}
+{% endblock %}
+
+{% block styles %}
+  {% include 'styles.css' %}
+{% endblock %}
+
+{% block scripts %}
+  {% if view and view.lock %}
+    {% include 'view_locked.js' %}
+  {% elif (view and not view.lock) or not view %}
+    {% include 'view_unlocked.js' %}
+  {% endif %}
+{% endblock %}
+
+{% block body %}
+  {% if view and view.lock %}
+    {% include 'view_locked.html' %}
+  {% elif (view and not view.lock) or not view %}
+    {% include 'view_unlocked.html' %}
+  {% endif %}
+{% endblock %}

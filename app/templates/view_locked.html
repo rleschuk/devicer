@@ -1,0 +1,35 @@
+
+<div class="fluid-container content" style="padding-bottom: 15px;">
+
+  <div class="row viewheader">
+    <div class="col" style="max-width:200px;padding-top: 5px;">
+      <button type="button"
+        onclick="unlock(this)"
+        class="btn btn-outline-success">
+        <i class="fa fa-lock faa-shake animated"></i>
+      </button>
+      <a href="{{ url_for('main.new') }}"
+        role="button"
+        target="_blank"
+        class="btn btn-outline-success"><i class="fas fa-file"></i> Создать задачу</a>
+    </div>
+    <div class="col" style="display:flex;">
+      <div><font style="font-size:2rem;">{{ view.view_name }}</font></div>
+    </div>
+    <div style="position:absolute;right:15px;bottom:-20px;">
+      saved: {{ view.view_saved }}{% if view.crontab_enabled %}, next run: {{ next_run }}, crontab enabled: {{ view.crontab }}{% endif %}
+    </div>
+  </div>
+
+  <div class="row" style="padding: 15px 0px 0px 0px;">
+    <div id="data_table" class="col"></div>
+  </div>
+
+</div>
+
+<script type="text/javascript">
+
+  load_data({{ (view.data if view else {}) | tojson | safe }});
+  set_columns_settings({{ (view.settings['columns'] if view else {}) | tojson | safe }});
+
+</script>

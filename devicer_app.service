@@ -1,0 +1,15 @@
+[Unit]
+Description=uWSGI instance to serve devicer
+After=network.target
+
+[Service]
+User=nginx
+Group=nginx
+WorkingDirectory=/opt/production/devicer
+Environment="PATH=/opt/production/devicer/venv/bin"
+ExecStart=/opt/production/devicer/venv/bin/uwsgi --ini devicer_app.ini
+ExecReload=/bin/kill -HUP $MAINPID
+
+[Install]
+WantedBy=multi-user.target
+

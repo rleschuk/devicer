@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>{% block title %}{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static',filename='css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static',filename='css/datatables.min.css') }}"/>
+    <link rel="stylesheet" href="{{ url_for('static',filename='css/codemirror.css') }}"/>
+    <link rel="stylesheet" href="{{ url_for('static',filename='css/font-awesome-animation.min.css') }}">
+    <style type="text/css">
+      html {
+        font-size: 12px;
+        min-height: 100%;
+      }
+      {% block styles %}{% endblock %}
+    </style>
+    <script src="{{ url_for('static',filename='js/jquery-3.2.1.min.js') }}"></script>
+    <script src="{{ url_for('static',filename='js/jquery.cookie.min.js') }}"></script>
+    <script src="{{ url_for('static',filename='js/tether.min.js') }}"></script>
+    <script src="{{ url_for('static',filename='js/popper.min.js') }}"></script>
+    <script src="{{ url_for('static',filename='js/bootstrap.min.js') }}"></script>
+    <script src="{{ url_for('static',filename='js/datatables.min.js') }}"></script>
+    <script src="{{ url_for('static',filename='js/datatables.globals.js') }}"></script>
+    <script src="{{ url_for('static',filename='js/fontawesome-all.js') }}"></script>
+    <script src="{{ url_for('static',filename='js/js.cookie.min.js') }}"></script>
+    <script src="{{ url_for('static',filename='js/interact.min.js') }}"></script>
+    <script src="{{ url_for('static',filename='js/bootbox.min.js') }}"></script>
+    <script src="{{ url_for('static',filename='js/codemirror.min.js') }}"></script>
+    <script src="{{ url_for('static',filename='js/matchbrackets.js') }}"></script>
+    <script src="{{ url_for('static',filename='js/sql.js') }}"></script>
+    <script src="{{ url_for('static',filename='js/python.js') }}"></script>
+    <script type="text/javascript">
+
+      $.fn.dataTableExt.sErrMode = 'none';
+
+      var ajax_process = null;
+      var dialog_loading = null;
+      var data_table = null;
+
+      function set_columns_settings(columns) {
+        if (data_table) {
+          for (let col_name in columns) {
+            data_table.column(col_name + ':name').visible(columns[col_name].visible)
+          }
+        }
+      }
+
+      function load_data(data) {
+        $('#data_table').empty();
+        let table = $('<table class="table table-hover" cellspacing="0" style="width:100%;">')
+        $('#data_table').append(table);
+
+        let columns = [];
+        let rows = [];
+
+        try {
+          columns = generate_columns(data.columns);
+          rows = data.rows;
+        } catch(err) {
+          try {
+            columns = generate_columns(Object.keys(data.rows[0]).sort());
+            rows = data.rows;
+          } catch(err) {
+            try {
+              columns = generate_columns(Object.keys(data[0]).sort());
+              rows = data;
+            } catch(err) {
+              console.error(err);
+              return
+            }
+          }
+        }
+
+        data_table = table.on('error.dt', function (e, settings, techNote, message) {
+          console.log('An error has been reported by DataTables: ', message);
+        }).DataTable({
+          pageLength: $.cookie('pageLength') == null ? 10 : parseInt($.cookie('pageLength')),
+          destroy: true,
+          data: rows,
+          columns: columns,
+          buttons: [
+            {extend: 'excel'},
+            {extend: 'colvis'}
+          ],
+          dom: 'Blfrtip'
+        });
+
+        $('select[name="DataTables_Table_0_length"]').change(function() {
+          $.cookie('pageLength', $(this).val());
+        });
+
+        $('input[name="username"]').on("change paste keyup", function() {
+          try {
+            data_table.cell(
+              data_table.row($(this).closest('tr')),
+              'username:name'
+            ).data($(this).val());
+          } catch {}
+        });
+
+        $('input[name="password"]').on("change paste keyup", function() {
+          try {
+            data_table.cell(
+              data_table.row($(this).closest('tr')),
+              'password:name'
+            ).data($(this).val());
+          } catch {}
+        });
+
+        check_pendings();
+      }
+
+      function check_pendings() {
+        let rows = data_table.rows(function(idx, data, node) {
+          return data.task_state === 'PENDING' ? true : false;
+        });
+        if (rows.data().length > 0) {
+          rows.every(function(i) {
+            let row = this;
+            let row_data = row.data();
+            $.ajax({
+              url: '{{ url_for("main.task_info", task_id="string") }}'
+                .replace('/string', '/' + row_data.task_id),
+              async: true,
+              dataType: 'json'
+            }).done(function(data) {
+              for (let col_name in data) {
+                try { data_table.cell(row, col_name + ':name').data(data[col_name]); }
+                catch {}
+              }
+            }).fail(function(xhr, status, error) {
+              console.error(error, xhr.responseText);
+              bootbox.alert(xhr.responseText);
+            });
+          });
+        }
+      }
+
+      {% block scripts %}{% endblock %}
+
+    </script>
+  </head>
+  <body>
+  {% block body %}{% endblock %}
+  </boby>
+</html>

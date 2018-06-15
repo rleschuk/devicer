@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title></title>
+    <style media="screen">
+      .send { font-family: monospace; background-color: #ffd3c1; padding: 10px; }
+      .recv { font-family: monospace; background-color: #daffa3; padding: 10px; }
+    </style>
+  </head>
+  <body>
+    <div style="font-family: monospace;">{{ '# task_id: %s' % task.id }}</div>
+    <div style="font-family: monospace;">{{ '# task_date: %s' % task.result['datetime'] }}</div>
+    <div style="font-family: monospace;">{{ '# task_state: %s' % task.result['state'] }}</div>
+    <div style="padding-top: 30px; padding-bottom: 30px">
+      {% for line in task.result['result']['log'] %}
+        {% if 'RECV' in line %}
+        <div class="recv">{{ line.replace('\n', '<br>').replace(' ', '&nbsp;') | safe }}</div>
+        {% else %}
+        <div class="send">{{ line.replace('\n', '<br>').replace(' ', '&nbsp;') | safe }}</div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </body>
+</html>
