@@ -12,7 +12,8 @@ class Config:
 
     SQL_DEVICER_URLS = {
         '__main__': create_dbapi(SQLALCHEMY_DATABASE_URI),
-        'default': create_dbapi("oracle://os_usr:os_usr@localhost:1521/orange"),
+        'default': create_dbapi("oracle://os_usr:os_usr@192.168.66.38:1521/orange"),
+        'eqm.enforta.net': create_dbapi("oracle://os_usr:os_usr@192.168.66.38:1521/orange"),
     }
 
     TAC_USERNAME = os.getenv('TAC_USERNAME') or "devicer"
